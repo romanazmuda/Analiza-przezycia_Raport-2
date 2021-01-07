@@ -1,0 +1,418 @@
+\documentclass[12pt, a4paper]{article}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dodatkowe pakiety LaTeX'a
+\usepackage[OT4]{polski}
+\usepackage[cp1250]{inputenc}
+\usepackage[top=2.5cm, bottom=2.5cm, left=2cm, right=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[colorlinks=true, linkcolor=blue]{hyperref}
+\usepackage{anyfontsize}
+\usepackage{bbm}
+\usepackage{amsmath}
+\usepackage{animate}
+\usepackage{Sweave}
+\graphicspath{{inst/extdata/}}
+\DeclareGraphicsExtensions{.pdf,.png}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dodatkowe definicje œrodowisk
+\newtheorem{theorem}{Twierdzenie}
+\newtheorem{lemma}{Lemat}
+\newtheorem{corollary}{Wniosek}
+\newtheorem{proposition}{Propozycja}
+\newtheorem{remark}{Uwaga}
+\newtheorem{note}{Notka}
+\newtheorem{fact}{Fakt}
+\newtheorem{definition}{Definicja}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ustawienia globalne
+<<ustawienia_globalne, echo=FALSE>>=
+library(knitr)
+library(latex2exp)
+library(reliaR)
+library(binom)
+library(stats)
+library(NADA)
+library(survival)
+library(survminer)
+library(ggplot2)
+library(xtable) 
+library(dplyr)
+opts_chunk$set(fig.path='figure/', fig.align='center', fig.pos='H',fig.width=4, fig.height=3)
+
+@
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% strona tytulowa
+\title{Analiza prze¿ycia\\
+Raport 2}
+\author{Romana ¯muda}
+\maketitle
+\newpage
+
+\tableofcontents 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Zadanie do sprawozdania - Czêœæ 1}
+\label{s:part1}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Zadanie 1}
+
+Moim zadaniem jest narysowanie estymatora nieparametrycznego Kaplana - Meiera funkcji prze¿ycia na danych dotycz¹cych pacjentów leczonych na niewydolnoœæ nerek. Zmienna \textsl{Czas} przyjmuje wartoœci 1 lub 0, gdzie pierwsza zmienna oznacza czas, gdy zaczêto dializowaæ pacjenta od momentu rozpoznania choroby (w latach), natomiast 0 okreœla czas obserwacji pacjenta od momentu rozpoznania choroby (w latach).
+Pozosta³e cztery zmienne dotycz¹ genotypu pacjenta. Interesuje nas czas od momentu rozpoznania choroby do momentu, gdy dializa jest konieczna do przeprowadzenia. W poni¿szych zadaniach czas od momentu rozpoznania choroby do dializy pe³ni rolê “czasu ¿ycia”. Oczywiœcie niektóre dane s¹ cenzurowane ( Zmienna \textsl{Cenzura}) i zak³adamy, ¿e czas cenzurowania jest niezale¿ny od czasu do wyst¹pienia zdarzenia, co oznacza ¿e mo¿emy estymowaæ te zmienne i nie bêdzie problemu z okreœleniem funkcji prze¿ycia. Nie przyjmujemy dodatkowych za³o¿eñ dotycz¹cych “czasu ¿ycia”, tzn. nie przyjmujemy postaci rozk³adu tego czasu.
+\newline
+\newline 
+\begin{center}
+\textbf{{\large Estymator kaplana - meiera w podgrupie Arg25Pro}}
+\end{center}
+\newline
+
+Poni¿ej wgrywamy te dane :
+%wgranie
+<<wgranie,echo=TRUE,warning=FALSE,>>=
+dane3<-read.delim("CzasDoDializy.csv", header = TRUE, ";")
+dane3$Czas <- as.numeric(gsub(",", ".", as.character(dane3$Czas)))
+
+@
+Tworzymy ten estymator za pomoc¹ bibliotek survival i survminer:
+
+<<zmienne1,echo=TRUE,eval=TRUE>>=
+surv_object1<-Surv(dane3$Czas, dane3$Cenzura)
+fit1 <- survfit(surv_object1 ~ dane3$Arg25Pro, data = dane3,
+                type = "kaplan-meier")
+g1<-ggsurvplot(fit1, data = dane3, conf.int = FALSE) + ggtitle("Estymator kaplana - meiera dla zmiennych Arg25Pro")
+@
+Dany estymator ukazujemy z podzia³em w podgrupie Arg25Pro na wykresie \ref{F:Arg25ProK}. 
+\begin{center}
+\includegraphics[width=0.7\textwidth]{1}
+\end{center}
+\begin{figure}[H]
+<<kaplanarg, fig=FALSE,echo=FALSE, fig.cap='Wykresy funkcji prze?ycia Arg25pro kaplan'>>=
+g1
+@
+\caption{ Estymator Kaplana - Meiera funkcji prze¿ycia w podgrupie Arg25Pro}
+\label{F:Arg25ProK}
+\end{figure}
+
+
+\newline 
+\newline 
+\newline  
+\begin{center}
+\textbf{{\large Estymator kaplana - meiera w ca³ej bazie danych}}
+\end{center}
+\newline 
+\newline 
+\newline 
+Postêpujemy analogicznie jak w przypadku podgrupy, jednak w funkcji \textsl{survit} wpisujemy $1$, gdy¿ to oznacza wszystkie zmienne.
+
+<<zmienne2,echo=TRUE,eval=TRUE>>=
+fit1.2 <- survfit(surv_object1 ~ 1, data = dane3,
+                type = "kaplan-meier")
+g1.2<-ggsurvplot(fit1.2, data = dane3, conf.int = FALSE) + 
+  ggtitle("Estymator kaplana - meiera w dla ca³ych danych")
+@
+Dany estymator ukazuje na wykresie \ref{F:allK} dla wszystkich danych.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{2}
+\end{center}
+
+\begin{figure}[H]
+<<kaplanarg1,fig=FALSE,echo=FALSE, fig.cap='Wykresy funkcji prze?ycia Arg25pro kaplan>>=
+g1.2
+@
+\caption{ Estymator Kaplana - Meiera funkcji prze¿ycia w ca³ej bazie}
+\label{F:allK}
+\end{figure}
+
+
+
+
+\newpage
+\subsection{Zadanie 2}
+\newline 
+\newline 
+\newline 
+\begin{center}
+\textbf{{\large Estymator fleminga - harringtona w podgrupie Arg25Pro}}
+\end{center}
+\newline
+\newline 
+\newline 
+W tym zadaniu zbudujemy estymator Fleminga - Harringtona i zaprezentujemy t¹ sam¹ zale¿noœæ.
+<<zmienne3,echo=TRUE,eval=TRUE>>=
+fit2 <- survfit(surv_object1 ~ dane3$Arg25Pro, data = dane3,
+                type = "fleming-harrington")
+g2 <- ggsurvplot(fit2, data = dane3, conf.int = FALSE) + 
+  ggtitle("Estymator fleminga w podgrupie Arg25Pro")
+@
+Na wykresie \ref{F:Arg25proF} prezentuje powsta³y estymator funkcji prze¿ycia w podgrupach Arg25Pro.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{3}
+\end{center}
+
+\begin{figure}[H]
+<<flamingarg,fig=FALSE,echo=FALSE, fig.cap='Wykresy funkcji przezycia Arg25Pro fleming'>>=
+g2
+@
+\caption{ Estymator Fleminga - Harringtona funkcji prze¿ycia w podgrupie Arg25Pro }
+\label{F:Arg25proF}
+\end{figure}
+
+\newpage
+\begin{center}
+\textbf{{\large Estymator fleminga - harringtona w ca³ej bazie danych}}
+\end{center}
+\newline 
+\newline 
+\newline 
+Stworzenie modelu :
+
+<<zmienne4,echo=TRUE,eval=TRUE>>=
+fit2.1 <- survfit(surv_object1 ~ 1, data = dane3,
+                type = "fleming-harrington")
+g2 <- ggsurvplot(fit2.1, data = dane3, conf.int = FALSE) + 
+  ggtitle("Estymator fleminga w bazie")
+@
+Na wykresie \ref{F:allF} prezentuje powsta³y estymator funkcji prze¿ycia w ca³ej bazie danych
+\begin{center}
+\includegraphics[width=0.7\textwidth]{4}
+\end{center}
+\begin{figure}[H]
+<<flamingarg1,fig=FALSE,echo=FALSE, fig.cap='Wykresy funkcji przezycia Arg25Pro fleming'>>=
+g2  
+@
+\caption{ Estymator Fleminga - Harringtona funkcji prze¿ycia w ca³ej bazie }
+\label{F:allF}
+\end{figure}
+
+
+
+
+\subsection{Zadanie 3}
+Warto zauwa¿yæ, ¿e wykresy miêdzy sob¹ nie ró¿ni¹ siê wiele, co oznacza ¿e oba estymatory dobrze przybli¿aj¹ funkcjê prze¿ycia stworzon¹ na zmiennych o niewydolnoœci nerek. Nawet podzia³ na podgrupê Arg25Pro nadal zachowuje kszta³t wykresu funkcji prze¿ycia, równie¿ dla odpowiednich estymatorów.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Zadanie do sprawozdania - Czêœæ 2}
+\label{s:part2}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Zadanie 1}
+Kolejnym zadaniem dotycz¹cym tego samego pliku jest narysowanie przedzia³ów ufnoœci w przypadku ca³ego pliku oraz z podzia³em w podgrupie Arg25Pro, rysuj¹c przedzia³y mamy uwzglêdniæ 3 typy, wszystkie z podanych typów korzystaj¹ z metody delty poni¿ej same typy i odpowiadaj¹ im podane przekszta³cenia, z których korzystamy w metodzie delty:
+\begin{itemize}
+\item $log$ ------------ $g(x) = log(x)$, 
+\item $log - log$ ----- $g(x) = log( -log(x))$,
+\item $logit$ ---------- $g(x) = log(\frac{x}{1-x})$
+\end{itemize}
+\newline 
+\newline 
+\newline
+\begin{center}
+\textbf{{\large Przedzia³y ufnoœci w podgrupie Arg25Pro}}
+\end{center}
+\newline
+\newline 
+\newline 
+Postêpujemy podobnie jak w czêœci pierwszej, jednak teraz do naszych modeli dodajemy warunek \textsl{conf.type}, który przyjmyuje odpowiednie typy przedzia³ów.
+
+<<zmienne5,echo=TRUE,eval=TRUE>>=
+surv_object1<-Surv(dane3$Czas, dane3$Cenzura)
+model1 <- survfit(surv_object1 ~ dane3$Arg25Pro, data = dane3, 
+                  type = c("kaplan-meier"), conf.type = c("log"))
+model2 <- survfit(surv_object1 ~ dane3$Arg25Pro, data = dane3, 
+                  type = c("kaplan-meier"), conf.type = c("log-log"))
+model3 <- survfit(surv_object1 ~ dane3$Arg25Pro, data = dane3,
+                  type = c("kaplan-meier"), conf.type = c("logit"))
+wykres1 <- ggsurvplot(model1, data = dane3, conf.int = TRUE) + ggtitle("Typ log")
+wykres2 <- ggsurvplot(model2, data = dane3, conf.int = TRUE) + ggtitle("Typ log-log")
+wykres3 <- ggsurvplot(model3, data = dane3, conf.int = TRUE) + ggtitle("Typ logit")
+@
+Poni¿ej wykresy \ref{fig:footbar} funkcji prze¿ycia wraz z przedzia³ami ufnoœci dla ró¿nych przeksta³ceñ w metodzie delty: 
+
+\begin{figure}
+    \centering
+    \subfigure{\includegraphics[width=0.45\textwidth]{5.png}} 
+    \subfigure{\includegraphics[width=0.45\textwidth]{6.png}} 
+    \subfigure{\includegraphics[width=0.45\textwidth]{7.png}} 
+    \caption{(a) log (b) log - log (c) logit}
+    \label{fig:footbar}
+\end{figure}
+
+\newpage
+\newline 
+\newline 
+\newline 
+\begin{center}
+\textbf{{\large Przedzia³y ufnoœci dla ca³ej bazy}}
+\end{center}
+\newline 
+\newline 
+\newline 
+Analogiczne postêpowanie:
+<<zmienne6,echo=TRUE,eval=TRUE>>=
+surv_object1<-Surv(dane3$Czas, dane3$Cenzura)
+model1 <- survfit(surv_object1 ~ 1, data = dane3,
+                  type = c("kaplan-meier"), conf.type = c("log"))
+model2 <- survfit(surv_object1 ~ 1, data = dane3,
+                  type = c("kaplan-meier"), conf.type = c("log-log"))
+model3 <- survfit(surv_object1 ~ 1, data = dane3, 
+                  type = c("kaplan-meier"), conf.type = c("logit"))
+wykres1 <- ggsurvplot(model1, data = dane3, conf.int = TRUE) + ggtitle("Typ log")
+wykres2 <- ggsurvplot(model2, data = dane3, conf.int = TRUE) + ggtitle("Typ log-log")
+wykres3 <- ggsurvplot(model3, data = dane3, conf.int = TRUE) + ggtitle("Typ logit")
+@
+Wykres \ref{fig:cal} estymatora Kaplana-Meiera funkcji prze¿ycia w ca³ej badanej grupie wraz z realizacjami przedzia³ów ufnoœci:
+
+\begin{figure}
+    \centering
+    \subfigure{\includegraphics[width=0.45\textwidth]{8.png}} 
+    \subfigure{\includegraphics[width=0.45\textwidth]{9.png}} 
+    \subfigure{\includegraphics[width=0.45\textwidth]{10.png}} 
+    \caption{(a) log (b) log - log (c) logit}
+    \label{fig:cal}
+\end{figure}
+
+\newpage
+\subsection{Zadanie 2}
+
+Jeœli chodzi o wybór, który typ przedzia³u wybraæ to po analizie samych wykresów dla ca³ej bazy nie mo¿emy jednoznacznie zdecydowaæ, który przedzia³ jest tym najlepszym, a same zmiany szerokoœci przedzia³ów s¹ niewielkie w poszczególnych punktach czasu.
+<<zmienne7,echo=FALSE,eval=TRUE>>=
+log <- data.frame("log_lower" = model1$lower,"log_upper" = model1$upper)
+log_log <- data.frame("log-log_lower" = model2$lower,"log-log_upper" = model2$upper)
+logit <- data.frame("logit_lower" = model3$lower,"logit_upper" = model3$upper)
+przedzialy <- data.frame(log, log_log, logit)
+@
+
+<<przedzialyelo,echo=FALSE,eval=TRUE,results=tex>>=
+
+print(xtable(przedzialy,caption="Przedzia³y ufnoœci",label="tab:przedzialy"),
+      type="latex",table.placement = "H",,caption.placement = "top")
+@
+\subsection{Zadanie 3}
+Bardzo du¿e przedzia³y s¹ w przypadku zmiennej$ Arg25Pro = 2$ i to tutaj widaæ najwiêksze ró¿nice w wyliczaniu przedzia³ów, w przypadku typu $log$ znacznie wiêksze przedzia³y s¹ podane dla górnej granicy, odwrotny przypadek dzieje siê dla $log - log$. Najbardziej wypoœrodkowany wydaje siê typ przedzia³u ufnoœci dla $logit$. W przypadku wartoœci 1 to badaj¹c jej przedzia³y dla róznych typów nie widzimy znacz¹cych ró¿nic w wykresach. Warto dodaæ, ¿e zmiennych równych 2 jest sporo mniej ni¿ 1 temu te¿ te przedzia³y daj¹ takie, a nie inne wartoœci. Warto dodaæ, ¿e zmiennych $ Arg25Pro = 2$ jest znaczniej mniej ni¿ $ Arg25Pro = 1$, co negatywnie wp³ywa na tworzone przedzia³y, dlatego s¹ takie szerokie i uzale¿nione od typu wyliczenia przedzia³ów.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Zadanie do sprawozdania - Czêœæ 3}
+\label{s:part3}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Zadanie 1,2 }
+
+W ostatniej czêœci sprawozdania musimy oszacowaæ punktowo i przedzia³owo wartoœæ oczekiwan¹ i medianê rozk³adu czasu od
+momentu rozpoznania choroby do koniecznoœci przeprowadzenia dializy w ca³ej badanej
+grupie i w podgrupie \textsl{Arg25Pro}. 
+\newline 
+\newline 
+\newline 
+\begin{center}
+\textbf{{\large Estymacja mediany i œredniej w podgrupie Arg25Pro}}
+\end{center}
+\newline 
+\newline 
+\newline 
+Tak jak w poprzednich zadaniach tworzymy model  estymatora funkcji prze¿ycia. Z modelu odczytamy wartoœæ œredniej, a z danych z modelu jesteœmy wstanie podaæ ich przedzia³y ufnoœæi. Oczywiœcie korzystaj¹c z obliczonych na wyk³adzie przedzia³ów ufnoœci tzn $ [T_l, T_u] $:
+<<zmienne11, echo=TRUE,eval=TRUE>>=
+surv_object1<-Surv(dane3$Czas, dane3$Cenzura)
+fit1 <- survfit(surv_object1 ~ dane3$Arg25Pro, type = c("kaplan-meier"), data = dane3, stype = 1, ctype = 1)
+print(fit1, print.rmean = TRUE)
+x <- qnorm(1-0.05/2)
+
+srednia.1 <- 10.28
+srednia.1.low <- srednia.1 - x * 0.92
+srednia.1.upper <- srednia.1 + x * 0.9
+
+srednia.2 <- 9.35
+srednia.2.low <- srednia.2 - x * 2.51
+srednia.2.upper <- srednia.2 + x * 2.51
+
+@
+
+To samo zdefiniujemy sobie dla mediany, jednak tutaj model sam podaje nam przedzia³y ufnoœci na poziomie ufnoœci $0.95$:
+<<zmienne12, echo=TRUE,eval=TRUE>>=
+mediana.1 <- 9
+mediana.1.low <- 4.5
+mediana.1.upper <- 17
+
+mediana.2 <- 13
+mediana.2.low <- 2
+mediana.2.upper <- "NA"
+@
+\newpage 
+\begin{center}
+\textbf{{\large Estymacja mediany i œredniej dla ca³ej bazy}}
+\end{center}
+\newline 
+\newline 
+\newline 
+Postêpujemy analogicznie w wyliczeniach, jedyn¹ róŸnic¹ jest konstrukcja modelu, ale to ju¿ zosta³o omówione parê zadañ wy¿ej. Zaczynamy od wyliczenia odpowiednich wartoœci dla estymatora œredniej.
+<<zmienne13, echo=TRUE,eval=TRUE>>=
+surv_object1<-Surv(dane3$Czas, dane3$Cenzura)
+fit1 <- survfit(surv_object1 ~ 1, type = c("kaplan-meier"), data = dane3, stype = 1, ctype = 1)
+print(fit1, print.rmean = TRUE)
+x <- qnorm(1-0.05/2)
+
+srednia.all <- 10.171
+srednia.all.low <- srednia.all - x * 0.847
+srednia.all.upper <- srednia.all + x * 0.847
+@
+Odczytujemy wartoœci estymatora mediany dla ca³ej bazy:
+<<zmienne14, echo=TRUE,eval=TRUE>>=
+mediana.all <- 9
+mediana.all.low <- 4.5
+mediana.all.upper <- 14
+@
+Ostatecznie prezentuje wnioski w dwóch tabelach
+\begin{itemize}
+\item Estymacja Œredniej (\ref{tab:srednia})
+\item Estymacja Mediany (\ref{tab:mediana})
+w której ka¿da z nich ma 3 kolumny, odpowiadaj¹ce kolejno: 
+\begin{itemize}
+\item wyliczenia dla wszystkich danych, 
+\item podgrupa $ Arg25Pro = 1$, 
+\item podgrupa $ Arg25Pro = 2$.
+\end{itemize}
+\end{itemize}
+<<zmienne15, echo=TRUE,eval=TRUE>>=
+All <- data.frame(c(srednia.all, srednia.all.low, srednia.all.upper))
+Arg.1 <- data.frame(c(srednia.1, srednia.1.low, srednia.1.upper))
+Arg.2 <- data.frame(c(srednia.2, srednia.2.low, srednia.2.upper))
+srednia <- data.frame(All,Arg.1,Arg.2)
+rownames(srednia) <- c("Estymacja œredniej"," T_l"," T_u")
+colnames(srednia) <- c("All", "Arg = 1", "Arg = 2") 
+@
+<<zmienne17, echo=TRUE,eval=TRUE>>=
+All.med <- data.frame(c(mediana.all, mediana.all.low, mediana.all.upper))
+Arg.1.med <- data.frame(c(mediana.1, mediana.1.low, mediana.1.upper))
+Arg.2.med <- data.frame(c(mediana.2, mediana.2.low, mediana.2.upper))
+mediana <- data.frame(All.med, Arg.1.med, Arg.2.med)
+rownames(mediana) <- c("Estymacja mediany"," T_l"," T_u")
+colnames(mediana) <- c("All", "Arg = 1", "Arg = 2") 
+@
+
+<<srednia,echo=FALSE,eval=TRUE,results=tex>>=
+
+print(xtable(srednia,caption="Œrednia", rownames=TRUE,colnames = TRUE,label="tab:srednia"),
+      type="latex",table.placement = "H",,caption.placement = "top")
+@
+<<mediana,echo=FALSE,eval=TRUE,results=tex>>=
+
+print(xtable(mediana,caption="Mediana", rownames=TRUE, colnames = TRUE,label="tab:mediana"),
+      type="latex",table.placement = "H",,caption.placement = "top")
+@
+
+\subsection{Zadanie 3}
+Porównuj¹c wartoœæ wyestymowanej œredniej wraz z przedzia³ami dla danych podgrup $ Arg25Pro$ widzimy, ¿e nie s¹ one równe na takim poziomie istotnoœci, przypuszczam, ¿e podgrupa $Arg25Pro = 2$ jest t¹ odstaj¹c¹ od w³aœciwej wartoœci, wiemy ¿e do niej wpada³o $ n = 15 $elemetnów ze $110$. Myœlê, ¿e odrzucilibyœmy hipotezê o ich równoœci, ale oczywiœcie mogê siê myliæ. Dla $Arg25Pro = 1$ widzimy zbli¿onoœæ wartoœci do wartoœci œredniej z estymatora ze wszytskich danych.
+\end{document}
+
+
+
